@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Control de parámetros css por voz</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    padding: 40px;
+    background: #f5f5f5;
+  }
+  button {
+    font-size: 18px;
+    padding: 12px 24px;
+    cursor: pointer;
+    margin-bottom: 20px;
+  }
+  #estado {
+    margin-bottom: 20px;
+    font-weight: bold;
+  }
+  #transcripcion {
+    margin: 20px auto;
+    max-width: 600px;
+    min-height: 40px;
+    padding: 10px;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+  }
+  .cajas {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin-top: 30px;
+  }
+  .caja {
+    width: 120px;
+    height: 120px;
+    border: 3px solid #333;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: white;
+    background: #ddd;
+    transition: background 0.3s;
+  }
+  .caja.on-blue { background: #1e5fff; }
+  .caja.on-green { background: #22aa44; }
+</style>
+</head>
+<body>
+
+<h1>Control por voz (Español)</h1>
+<p>Di: <b>hogar</b> / <b>puerta</b> (caja azul) &nbsp;|&nbsp; <b>banca</b> / <b>reloj</b> (caja verde)</p>
+
+<button id="btnMic">🎤 Activar micrófono</button>
+<div id="estado">Micrófono apagado</div>
+<div id="transcripcion">Aquí aparecerá lo que digas...</div>
+
+<div class="cajas">
+  <div class="caja" id="cajaAzul">AZUL</div>
+  <div class="caja" id="cajaVerde">VERDE</div>
+</div>
+
+<script>
+const btnMic = document.getElementById('btnMic');
+const estado = document.getElementById('estado');
+const transcripcionDiv = document.getElementById('transcripcion');
+const cajaAzul = document.getElementById('cajaAzul');
+const cajaVerde = document.getElementById('cajaVerde');
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+if (!SpeechRecognition) {
+  estado.textContent = "Tu navegador no soporta reconocimiento de voz. Usa Google Chrome.";
+  btnMic.disabled = true;
+} else {
+  const recognition = new SpeechRecognition();
+  recognition.lang = 'es-ES';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+
+  let escuchando = false;
+  let palabrasProcesadas = new Set();
+
+  function procesarPalabra(palabra) {
+    if (palabra === 'hogar') {
+      cajaAzul.classList.add('on-blue');
+    }
+    if (palabra === 'puerta') {
+      cajaAzul.classList.remove('on-blue');
+    }
+    if (palabra === 'banca') {
+      cajaVerde.classList.add('on-green');
+    }
+    if (palabra === 'reloj') {
+      cajaVerde.classList.remove('on-green');
+    }
+  }
+
+  recognition.onresult = (event) => {
+    let textoIntermedio = '';
+
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const resultado = event.results[i];
+      const texto = resultado[0].transcript.toLowerCase().trim();
+      // Quita signos de puntuación para comparar palabras limpias
+      const palabras = texto.replace(/[.,!?¡¿]/g, '').split(/\s+/);
+
+      if (resultado.isFinal) {
+        // Marca un id único por posición de resultado final para no reprocesar
+        palabras.forEach((palabra, idx) => {
+          const clave = i + '-' + idx + '-' + palabra;
+          if (!palabrasProcesadas.has(clave)) {
+            palabrasProcesadas.add(clave);
+            procesarPalabra(palabra);
+          }
+        });
+        textoIntermedio += texto + ' ';
+      } else {
+        // Resultados intermedios (aún hablando): procesamos en tiempo real
+        // pero solo la última palabra pronunciada, para reaccionar rápido
+        const ultimaPalabra = palabras[palabras.length - 1];
+        procesarPalabra(ultimaPalabra);
+        textoIntermedio += texto + ' ';
+      }
+    }
+
+    if (textoIntermedio) {
+      transcripcionDiv.textContent = textoIntermedio.trim();
+    }
+  };
+
+  recognition.onerror = (event) => {
+    estado.textContent = "Error: " + event.error;
+  };
+
+  recognition.onend = () => {
+    // Si seguimos en modo "escuchando", reiniciar automáticamente
+    if (escuchando) {
+      recognition.start();
+    } else {
+      estado.textContent = "Micrófono apagado";
+    }
+  };
+
+  btnMic.addEventListener('click', () => {
+    if (!escuchando) {
+      recognition.start();
+      escuchando = true;
+      estado.textContent = "🎙️ Escuchando...";
+      btnMic.textContent = "⏹️ Detener micrófono";
+    } else {
+      escuchando = false;
+      recognition.stop();
+      btnMic.textContent = "🎤 Activar micrófono";
+    }
+  });
+}
+</script>
+
+</body>
+</html>
