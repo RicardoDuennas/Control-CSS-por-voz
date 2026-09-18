@@ -11,11 +11,12 @@ Script desarrollado con Claude AI.
 
 ## Estructura
 
-Guarda el código HTML en un archivo, por ejemplo:
+Guarda el código HTML y demás archivos en tu equipo, por ejemplo:
 
 ```text
 proyecto/
 ├── index.html
+├── src/
 └── README.md
 ```
 
